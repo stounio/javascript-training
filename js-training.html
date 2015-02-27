@@ -1,0 +1,471 @@
+<html>
+<body>
+	<pre>
+		<script>
+		function log(arg){
+			document.writeln(arg);
+		}
+
+		function identity(x){
+			return x;
+		}
+		log(identity(3));
+
+
+		function add(a, b) {
+			return a + b;
+		}
+
+		log("add(3,4): " + add(3, 4)); //7
+
+		function sub(a, b) {
+			return a - b;
+		}
+		log("sub(3,4): " + sub(3, 4)); //-1
+
+		function mul(a, b){
+			return a*b;
+		}
+		log("mul(3,4): " + mul(3, 4)); //12
+
+		var three = identityf(3);
+
+		function identityf(a){
+			return function(){
+				return a;
+			};
+		}
+		log("three: " + three);
+		log("three(): " + three()); //3
+
+		function addf(a){
+			return function(b){
+				return a+b;
+			};
+		}
+
+		var addfresult = addf(3)(4);
+		log("addf(3)(4) : " + addfresult); // 7
+
+
+		function liftf(binaryFunction){
+			return function(a){
+				return function(b){
+					return binaryFunction(a, b);
+				};
+			};
+		}
+
+		
+		log("liftf(add)(3)(4): " + liftf(add)(3)(4)); //7
+
+		log("liftf(mul)(5)(6): " + liftf(mul)(5)(6)); //30
+
+		function curry(binaryFunction, a){
+			return liftf(binaryFunction)(a);
+		}
+		log("curry(add, 3)(4): " + curry(add, 3)(4)); //7
+		log("curry(mul, 5)(6): " + curry(mul, 5)(6)); //30
+
+		var inc = liftf(add)(1);
+		log("inc(5): " + inc(5)); //6
+		log("inc(inc(5)): " + inc(inc(5))); //7
+
+		var inc2 = curry(add, 1);
+		log("inc2(5): " + inc2(5)); //6
+		log("inc2(inc2(5)): " + inc2(inc2(5))); //7
+
+		var inc3 = addf(1);
+		log("inc3(5): " + inc3(5)); //6
+		log("inc3(inc3(5)): " + inc3(inc3(5))); //7
+
+		function twice(binaryFunction){
+			return function(a){
+				return binaryFunction(a, a);
+			};
+		}
+
+		var doubl = twice(add);
+		var square = twice(mul);
+		log("add(11, 11): " + add(11, 11)); // 22
+		log("Double: twice(add)(11): " + twice(add)(11)); //22
+		log("Square: twice(mul)(11): " + twice(mul)(11)); //121
+
+		function reverse(binaryFunction){
+			return function(a, b){
+				return binaryFunction(b, a);
+			};
+		}
+
+		var bus = reverse(sub);
+		log("reverse(sub)(3,2): " + reverse(sub)(3,2)); //-1
+
+		function composeu (unaryFunction1, unaryFunction2){
+			return function(a){
+				return unaryFunction2(unaryFunction1(a));
+			};
+		}
+		log("composeu(doubl, square)(5): " + composeu(doubl, square)(5)); //100
+
+
+		function composeb(binaryFunction1, binaryFunction2){
+			return function(a, b, c) { 
+				return binaryFunction2(binaryFunction1(a,b), c);
+			};
+		}
+		log("composeb(add, mul)(2,3,7): " + composeb(add, mul)(2, 3, 7)); //35
+
+		function once(binaryFunction){
+			var called = false;
+			return function(a, b){
+				if(!called){
+					called = true;
+					return binaryFunction(a, b);
+
+				}
+				//return undefined; // This is the contract of a function
+			};
+		}
+
+		var add_once = once(add);
+		log("add_once(3,4): " + add_once(3,4)); //7
+		log("add_once(3,4): " + add_once(3,4)); //undefined
+
+		function fromTo(start, end){
+			
+			return function(){
+				var currentIndex = start;
+				if(start<end){
+					start +=1;
+					return currentIndex;
+				}
+			};
+		}
+
+		var index = fromTo(0, 3);
+		log("index() :"  + index()); //0
+		log("index() :"  + index()); //1
+		log("index() :"  + index()); //2
+		log("index() :"  + index()); //undefined
+
+		function element(args, generator){
+			if(generator === undefined){
+				generator = fromTo(0,args.length);	
+			} 
+			return function(){
+				var index = generator();
+				if(index !== undefined){
+					return args[index];
+				}
+			};
+		}
+
+		var ele = element(['a', 'b', 'c', 'd'], fromTo(1, 3));
+		log("ele() : " + ele()); //'b'
+		log("ele() : " + ele()); //'c'
+		log("ele() : " + ele());
+		
+
+		var ele2 = element(['a','b','c','d']);
+		log("ele2() : " + ele2()); //'a'
+		log("ele2() : " + ele2()); //'b'
+		log("ele2() : " + ele2()); //'c'
+		log("ele2() : " + ele2()); //'d'
+
+		function collect(generator, array){
+			return function(){
+				var value = generator();
+				if(value !== undefined){
+					array.push(value);
+				}
+				return value;
+			};
+		}
+
+		var array = [];
+		var col = collect(fromTo(0,2), array);
+		log("col(): " + col()); // 0
+		log("col(): " + col()); // 1
+		log("col(): " + col()); // undefined
+		log("array: " + array); // [0, 1]
+
+
+		function filter(generator, predicate){
+			return function(){
+				var value;
+				do{
+					var value = generator();
+				} while(value !== undefined && !predicate(value));
+				return value;
+			};
+			
+		}
+
+		var fil  = filter(fromTo(0, 5), 
+			function third (value){
+				return (value%3) ===0;
+			});
+		log("fil(): " + fil()); // 0
+		log("fil(): " + fil()); // 3
+		log("fil(): " + fil()); // undefined
+
+		function concat(generator1, generator2){
+			return function(){
+				var value = generator1();
+				if(value !== undefined){
+					return value;
+				}
+				return generator2();
+			};
+		}
+
+		var con = concat(fromTo(0, 3), fromTo(0,2));
+		log("con():" + con());//0
+		log("con():" + con());//1
+		log("con():" + con());//2
+		log("con():" + con());//0
+		log("con():" + con());//1
+		log("con():" + con());//undefined
+		
+		function gensymf(prefix){
+			var index = 0;
+			return function(){
+				index = inc(index);
+				return prefix + index;
+			}
+		}
+
+		var geng = gensymf("G"),
+		genh = gensymf("H");
+
+		log("geng(): " + geng()); // G1
+		log("genh(): " + genh()); // H1
+		log("geng(): " + geng()); // G2
+		log("genh(): " + genh()); // H2
+
+		function gensymff (unaryFunction, start){
+			return function(prefix){
+				var index = start;
+				return function(){
+					index = unaryFunction(index);
+					return prefix + index;	
+				}
+			}; 
+		}
+
+		var gensymf = gensymff(inc, 0),
+		geng = gensymf("G"),
+		genh = gensymf("H");
+
+		log("gensymff: geng(): " + geng()); // G1
+		log("gensymff: genh(): " + genh()); // H1
+		log("gensymff: geng(): " + geng()); // G2
+		log("gensymff: genh(): " + genh()); // H2
+
+		function fibonaccif(first, second){
+			var calls = 0;
+
+			return function(){
+				var result;
+				if (calls == 0){
+					calls +=1 ;
+					result = first;
+				} else if (calls == 1){
+					calls +=1 ;
+					result = second;
+				} else {
+					result = first + second;
+					first = second;
+					second = result;
+				}
+				return result;
+			};
+		}
+
+		var fib = fibonaccif(0,1);
+		log("fib(): " + fib()); // 0
+		log("fib(): " + fib()); // 1
+		log("fib(): " + fib()); // 1
+		log("fib(): " + fib()); // 2
+		log("fib(): " + fib()); // 3
+		log("fib(): " + fib()); // 5
+		log("fib(): " + fib()); // 8
+
+		function counter(index){
+			return {
+				next: function(){
+					return index +=1;
+				},
+				prev: function (){
+					return index -=1;
+				}	
+			};
+		}
+
+		var object = counter(10),
+		next = object.next,
+		prev = object.prev;
+		log("next(): " + next());// 11
+		log("prev(): " + prev());// 10
+		log("prev(): " + prev());// 9
+		log("next(): " + next());// 10
+
+		function revocable(unary){
+			return {
+				invoke: function(value){
+					if(unary !== undefined){
+						return unary(value);
+					}
+				},
+				revoke: function(){
+					unary = undefined;
+				}
+			};
+		}
+
+		var rev = revocable(identity),
+		invoke = rev.invoke;
+		log("invoke(7): " + invoke(7)); // 7
+		rev.revoke();
+		log("invoke(8): " + invoke(8)); // undefined
+
+		function m(value, source){
+			return {
+				value: value,
+				source: typeof source === 'string' ? source : String(value)
+			};
+		}
+
+		function addm(first, second){
+			return m(first.value + second.value,
+				"(" + first.source + "+" + second.source + ")");
+		} 
+		log("JSON.stringify(addm(m(3), m(4))): " + JSON.stringify(addm(m(3), m(4)))); // {"value": 7, "source": "(3+4)"}
+		log("JSON.stringify(addm(m(1), m(Math.PI, pi))): " + JSON.stringify(addm(m(1), m(Math.PI, "pi"))));
+
+		function liftm(binaryFunction, operator){
+			return function(a, b){
+				if(typeof a === 'number'){
+					a = m(a);
+				}
+				if(typeof b === 'number'){
+					b = m(b);
+				}
+				return m(binaryFunction(a.value, b.value), 
+					"(" + a.source + operator + b.source + ")");
+			};
+		}
+		var addm = liftm(add, "+");
+		log("addm(m(3), m(4))) : " + JSON.stringify(addm(m(3), m(4))));// {"value":7,"source":"(3+4)"}
+		log("liftm(mul,*)(m(3), m(4))): " + JSON.stringify(liftm(mul,"*")(m(3), m(4)))) ; // {"value":12,"source":"(3*4)"}
+
+
+		var addm = liftm(add, "+");
+		log("addm(3,4): " + JSON.stringify(addm(3,4))); //{"value":7,"source":"(3+4)"}
+
+		function exp(expression){
+			return Array.isArray(expression)? expression[0](exp(expression[1]), exp(expression[2])):expression;
+		};
+
+		var sae = [mul, 5, 11];
+		log("exp(sae): " + exp(sae)); // 55
+		log("exp(47): " + exp(47)); // 47
+
+		var nae = [
+		Math.sqrt,
+		[
+		add,
+		[square, 3],
+		[square, 4]
+		]
+		];
+
+		log("exp(nae): " + exp(nae));
+
+		
+
+		function addg(first){
+			function more(next){
+				if(next === undefined){
+					return first;
+				}
+				first += next;
+				return more;
+			};
+			if(first !== undefined){
+				return more;
+			}
+		}
+		
+		log("addg() : " + addg()); // undefined
+		log("addg(2)(): " + addg(2)()); // undefined
+		log("addg(2)(4)(): " + addg(2)(4)()); // undefined
+
+		function liftg(binaryFunction){
+			return function (first){
+				function more(next){
+					if(next=== undefined){
+						return first;
+					}
+					first = binaryFunction(first, next);
+					return more;
+				}
+				if(first !== undefined){
+					return more;
+				};
+			};
+		}
+
+		log("liftg(mul)(): " + liftg(mul)()); //undefined
+		log("liftg(mul)(3)(): " + liftg(mul)(3)()); // 3
+		log("liftg(mul)(3)(0)(4)(): " + liftg(mul)(3)(0)(4)()); // 0
+		log("liftg(mul)(1)(2)(4)(8)(): " + liftg(mul)(1)(2)(4)(8)()); // 64
+
+
+		function pushtoArray(array, value){
+			if(array===undefined){
+				array = [];
+			}
+			if(value !==undefined){
+				array.push(value);	
+			}
+			return array;
+		}
+
+
+		function arrayg(first){
+			if (first === undefined){
+				return [];
+			}
+			return liftg(
+				function(array, value){
+					array.push(value);
+					return array;
+				}
+				)([first]);
+		}
+
+		log("arrayg(): " + arrayg()); // []
+		log("arrayg(3)(): " + arrayg(3)()); // [3] 
+		log("arrayg(3)(4)(5)(): " + arrayg(3)(4)(5)()); // [3, 4, 5] 
+
+		function continuize(unaryFunction){
+			return function(callback, value){
+				//var result = unaryFunction(value);
+				//callback(result);
+				//return result;
+				return callback(unaryFunction(value));
+			};
+		}
+
+		var sqrtc = continuize(Math.sqrt);
+
+		var result = sqrtc(log, 81); //9
+		log("Result from sqrtc(log, 81): " + result);// 9 // undefined
+		
+		
+
+		</script>
+	</pre>
+</body>
+</html>
